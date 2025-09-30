@@ -50,7 +50,7 @@ AI Chatbot Platform is a full-stack application enabling real-time communication
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/yourusername/ai-chatbot-app.git
+git clone https://github.com/BELLILMohamedNadir/ai-chatbot-app.git
 cd ai-chatbot-app
 ```
 
@@ -239,7 +239,6 @@ docker-compose down     # Stop services
 - FastAPI backend
 - Next.js frontend
 - PostgreSQL database
-- Redis (optional)
 
 ## 🔒 Security
 
@@ -248,7 +247,6 @@ docker-compose down     # Stop services
 - Pydantic validation
 - SQLAlchemy ORM with parameterized queries
 - Environment-based configuration
-- Rate limiting (planned)
 
 ## 🤝 Contributing
 
@@ -258,10 +256,6 @@ docker-compose down     # Stop services
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## 👨‍💻 Author
 
 **Mohamed Nadir BELLIL**  
@@ -270,4 +264,4 @@ GitHub: [@BELLILMohamedNadir](https://github.com/BELLILMohamedNadir)
 
 ---
 
-<p align="center">Made by Mohamed Nadir BELLIL</p>
+<p align="center">Made with ❤️ by Mohamed Nadir BELLIL</p>
