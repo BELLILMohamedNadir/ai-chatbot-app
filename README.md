@@ -1,63 +1,72 @@
-🤖 AI Chatbot Platform
+# 🤖 AI Chatbot Platform
+
 A modern, real-time chat application powered by AI with multi-room support and WebSocket communication.
 
-[![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green?logo(https://fastapi.tiangolohttps://img.shields.io/badge/Next.js-14+-black?logo=next[![TypeScript](https://img.shields.io/badge/TypeScript-5+-blue?logo=(https://www.typescriptlanghttps://img.shields.io/badge
+[![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-14+-black?logo=next.js&logoColor=white)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5+-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-📖 Overview
+---
+
+## 📖 Overview
+
 AI Chatbot Platform is a full-stack application enabling real-time communication with AI assistants. It provides secure authentication, multiple chat rooms, AI-powered responses, and persistent message history.
 
-🎯 Key Features
-🔐 Secure authentication (JWT)
+## 🎯 Key Features
 
-💬 Real-time chat via WebSocket
+- 🔐 **Secure Authentication** - JWT-based authentication
+- 💬 **Real-time Chat** - WebSocket communication
+- 🏠 **Multi-room Support** - Organize conversations
+- 🤖 **Mistral AI Integration** - Powered by advanced AI
+- 👥 **Online User Presence** - See who's online
+- 📱 **Responsive UI** - Works on all devices
+- 🔄 **Auto-reconnection** - Seamless connection recovery
 
-🏠 Multi-room support
+## 🏗️ Architecture
 
-🤖 Mistral AI integration
-
-👥 Online user presence
-
-📱 Responsive UI
-
-🔄 Auto-reconnection
-
-🏗️ Architecture
-text
+```
 ┌──────────────┐         ┌──────────────┐         ┌──────────────┐
-│   Next.js    │ ◄────► │   FastAPI    │ ◄────► │  PostgreSQL  │
+│   Next.js    │ ◄─────► │   FastAPI    │ ◄─────► │  PostgreSQL  │
 │   Frontend   │  HTTP   │   Backend    │         │   Database   │
-│  Port: 3000  │   WS    │  Port: 8001  │         │   Port: 5432 │
+│  Port: 3000  │   WS    │  Port: 8001  │         │  Port: 5432  │
 └──────────────┘         └──────────────┘         └──────────────┘
-                                 │
-                         ┌───────┴────────┐
-                         │   Mistral AI   │
-                         │      API       │
-                         └────────────────┘
-🚀 Quick Start
-Prerequisites
-Python 3.11+
+                                │
+                         ┌──────┴───────┐
+                         │  Mistral AI  │
+                         │     API      │
+                         └──────────────┘
+```
 
-Node.js 18+
+## 🚀 Quick Start
 
-PostgreSQL 15+
+### Prerequisites
 
-Mistral AI API Key (get one at https://console.mistral.ai/)
+- Python 3.11+
+- Node.js 18+
+- PostgreSQL 15+
+- Mistral AI API Key ([Get one here](https://console.mistral.ai/))
 
-1) Clone repository
-bash
+### 1. Clone Repository
+
+```bash
 git clone https://github.com/yourusername/ai-chatbot-app.git
 cd ai-chatbot-app
-2) Backend setup
-bash
+```
+
+### 2. Backend Setup
+
+```bash
 cd apps/backend
 
 # Create virtual environment
 python -m venv .venv
+
+# Activate virtual environment
 # Mac/Linux:
 source .venv/bin/activate
 # Windows (PowerShell):
-# .venv\Scripts\Activate.ps1
+.venv\Scripts\Activate.ps1
 
 # Install dependencies
 pip install -r requirements.txt
@@ -71,8 +80,11 @@ python -c "from app.db.database import init_db; init_db()"
 
 # Start server
 uvicorn app.main:app --reload --port 8001
-3) Frontend setup
-bash
+```
+
+### 3. Frontend Setup
+
+```bash
 cd frontend
 
 # Install dependencies
@@ -80,22 +92,23 @@ npm install
 
 # Configure environment
 cp .env.local.example .env.local
-# Edit .env.local:
-# NEXT_PUBLIC_API_URL=http://localhost:8001/api/v1
-# NEXT_PUBLIC_WS_URL=ws://localhost:8001/api/v1
+# Edit .env.local with your API URLs
 
 # Start dev server
 npm run dev
-4) Access
-Frontend: http://localhost:3000
+```
 
-Backend API: http://localhost:8001
+### 4. Access the Application
 
-API Docs (Swagger): http://localhost:8001/docs
+- **Frontend:** http://localhost:3000
+- **Backend API:** http://localhost:8001
+- **API Docs (Swagger):** http://localhost:8001/docs
 
-⚙️ Configuration
-Backend (.env)
-text
+## ⚙️ Configuration
+
+### Backend (.env)
+
+```env
 # Database
 DATABASE_URL=postgresql://user:password@localhost:5432/chatbot_db
 
@@ -109,13 +122,20 @@ MISTRAL_API_KEY=your-mistral-api-key
 
 # CORS
 ALLOWED_ORIGINS=http://localhost:3000
-Frontend (.env.local)
-text
+```
+
+### Frontend (.env.local)
+
+```env
 NEXT_PUBLIC_API_URL=http://localhost:8001/api/v1
 NEXT_PUBLIC_WS_URL=ws://localhost:8001/api/v1
-📚 API Examples
-Auth: Register
-bash
+```
+
+## 📚 API Examples
+
+### Auth: Register
+
+```bash
 curl -X POST http://localhost:8001/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
@@ -124,23 +144,30 @@ curl -X POST http://localhost:8001/api/v1/auth/register \
     "password": "securepass123",
     "full_name": "John Doe"
   }'
-Auth: Login
-bash
+```
+
+### Auth: Login
+
+```bash
 curl -X POST http://localhost:8001/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
     "password": "securepass123"
   }'
-Response:
+```
 
-json
+**Response:**
+```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIs...",
   "token_type": "bearer"
 }
-WebSocket: Connect (JS)
-js
+```
+
+### WebSocket: Connect
+
+```javascript
 const ws = new WebSocket(
   'ws://localhost:8001/api/v1/ws/chat?token=YOUR_JWT_TOKEN&room_id=1'
 );
@@ -156,34 +183,40 @@ ws.onopen = () => {
 ws.onmessage = (event) => {
   console.log('Received:', JSON.parse(event.data));
 };
-📁 Project Structure
-text
+```
+
+## 📁 Project Structure
+
+```
 ai-chatbot-app/
 ├── apps/
 │   └── backend/
 │       ├── app/
-│       │   ├── api/v1/endpoints/   # API Routes
-│       │   ├── core/               # Config & Security
-│       │   ├── crud/               # DB Operations
-│       │   ├── models/             # SQLAlchemy Models
-│       │   ├── schemas/            # Pydantic Schemas
-│       │   ├── services/           # Business Logic
-│       │   └── main.py             # App Entry Point
+│       │   ├── api/v1/endpoints/    # API Routes
+│       │   ├── core/                # Config & Security
+│       │   ├── crud/                # DB Operations
+│       │   ├── models/              # SQLAlchemy Models
+│       │   ├── schemas/             # Pydantic Schemas
+│       │   ├── services/            # Business Logic
+│       │   └── main.py              # App Entry Point
 │       └── requirements.txt
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── app/                    # Next.js Pages
-│   │   ├── components/             # React Components
-│   │   ├── hooks/                  # Custom Hooks
-│   │   ├── lib/                    # Utilities
-│   │   └── types/                  # TS Types
+│   │   ├── app/                     # Next.js Pages
+│   │   ├── components/              # React Components
+│   │   ├── hooks/                   # Custom Hooks
+│   │   ├── lib/                     # Utilities
+│   │   └── types/                   # TS Types
 │   └── package.json
 │
 ├── docker-compose.yml
 └── README.md
-🧪 Testing
-bash
+```
+
+## 🧪 Testing
+
+```bash
 # Backend
 cd apps/backend
 pytest tests/ -v --cov
@@ -192,49 +225,49 @@ pytest tests/ -v --cov
 cd frontend
 npm test
 npm run test:e2e
-🐳 Docker
-bash
-docker-compose up -d       # Build & start
-docker-compose logs -f     # Logs
-docker-compose down        # Stop
-Services:
+```
 
-FastAPI backend
+## 🐳 Docker
 
-Next.js frontend
+```bash
+docker-compose up -d    # Build & start
+docker-compose logs -f  # View logs
+docker-compose down     # Stop services
+```
 
-PostgreSQL database
+**Included Services:**
+- FastAPI backend
+- Next.js frontend
+- PostgreSQL database
+- Redis (optional)
 
-Redis (optional)
+## 🔒 Security
 
-🔒 Security
-JWT auth, bcrypt password hashing
+- JWT authentication with bcrypt password hashing
+- CORS protection
+- Pydantic validation
+- SQLAlchemy ORM with parameterized queries
+- Environment-based configuration
+- Rate limiting (planned)
 
-CORS protection
+## 🤝 Contributing
 
-Pydantic validation
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-SQLAlchemy ORM
+## 📝 License
 
-Env-based config
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-Rate limiting (planned)
+## 👨‍💻 Author
 
-🤝 Contributing
-Fork the repo
+**Mohamed Nadir BELLIL**  
+Master 2 Software Engineering, University of Montpellier  
+GitHub: [@BELLILMohamedNadir](https://github.com/BELLILMohamedNadir)
 
-Create a branch (git checkout -b feature/amazing-feature)
+---
 
-Commit (git commit -m 'Add amazing feature')
-
-Push (git push origin feature/amazing-feature)
-
-Open a PR
-
-📝 License
-MIT – see LICENSE
-
-👨‍💻 Author
-Mohamed Nadir BELLIL
-Master 2 Software Engineering, University of Montpellier
-GitHub: https://github.com/BELLILMohamedNadir
+<p align="center">Made by Mohamed Nadir BELLIL</p>
