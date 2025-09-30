@@ -1,0 +1,16 @@
+{
+  "name": "ai-chatbot-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "backend": "cd apps/backend && uvicorn app.main:app --reload",
+    "build": "echo 'Build complete'",
+    "start": "cd apps/backend && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "workspaces": [
+    "apps/*"
+  ]
+}
