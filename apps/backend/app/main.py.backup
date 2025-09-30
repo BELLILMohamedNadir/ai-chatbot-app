@@ -1,0 +1,446 @@
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, Text, Float, ForeignKey
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.sql import func
+from pydantic import BaseModel, EmailStr
+from jose import JWTError, jwt
+from datetime import datetime, timedelta
+from typing import Optional
+import httpx
+import hashlib
+import time
+import os
+
+# Configuration - READ FROM ENVIRONMENT VARIABLES
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@postgres:5432/chatbot_db")
+MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")  # No default - use actual env var
+JWT_SECRET = os.getenv("JWT_SECRET", "your-super-secret-jwt-key")
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+
+print(f"🔑 Mistral API Key loaded: {'✅ YES' if MISTRAL_API_KEY else '❌ NO'}")
+print(f"🔑 API Key length: {len(MISTRAL_API_KEY) if MISTRAL_API_KEY else 0} characters")
+
+# Database setup
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+# Models
+class User(Base):
+    __tablename__ = "users"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    username = Column(String, unique=True, index=True, nullable=False)
+    full_name = Column(String)
+    hashed_password = Column(String, nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    content = Column(Text, nullable=False)
+    message_type = Column(String(20), default="user")
+    model_name = Column(String(50))
+    tokens_used = Column(Integer)
+    response_time_ms = Column(Integer)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+# Create tables
+Base.metadata.create_all(bind=engine)
+
+# Simple password hashing
+def get_password_hash(password: str) -> str:
+    return hashlib.sha256(password[:50].encode()).hexdigest()
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return get_password_hash(plain_password) == hashed_password
+
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=30)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, JWT_SECRET, algorithm="HS256")
+
+def verify_token(token: str) -> Optional[str]:
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        return payload.get("sub")
+    except:
+        return None
+
+# Database dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# Pydantic models
+class UserCreate(BaseModel):
+    email: EmailStr
+    username: str
+    password: str
+    full_name: Optional[str] = None
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+class ChatRequest(BaseModel):
+    message: str
+    model: str = "mistral-small-latest"
+    temperature: float = 0.7
+
+# FastAPI app
+app = FastAPI(
+    title="AI Chatbot API - Environment Variable Version",
+    description="AI chatbot using real environment variables",
+    version="2.2.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Authentication
+security = HTTPBearer()
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
+    try:
+        email = verify_token(credentials.credentials)
+        if not email:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        return user
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Authentication failed")
+
+# REAL Mistral AI integration using ENVIRONMENT VARIABLE
+async def call_mistral_ai(message: str, model: str = "mistral-small-latest", temperature: float = 0.7) -> dict:
+    # Use the ACTUAL environment variable - no fallback to demo
+    if not MISTRAL_API_KEY:
+        return {
+            "content": f"❌ No Mistral API key found in environment variables. Please set MISTRAL_API_KEY in your .env file.",
+            "tokens": 0,
+            "model": "no_api_key"
+        }
+    
+    try:
+        print(f"🤖 Calling Mistral AI with key: {MISTRAL_API_KEY[:8]}...")
+        
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            headers = {
+                "Authorization": f"Bearer {MISTRAL_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": "You are a helpful AI assistant. Be concise and informative."},
+                    {"role": "user", "content": message}
+                ],
+                "temperature": temperature,
+                "max_tokens": 1000
+            }
+            
+            print(f"📡 Making API call to Mistral...")
+            response = await client.post(
+                "https://api.mistral.ai/v1/chat/completions",
+                headers=headers,
+                json=payload
+            )
+            
+            print(f"📡 Mistral API response status: {response.status_code}")
+            
+            if response.status_code == 200:
+                result = response.json()
+                ai_response = result["choices"][0]["message"]["content"]
+                tokens = result.get("usage", {}).get("total_tokens", 0)
+                
+                print(f"✅ Real AI response received: {len(ai_response)} chars, {tokens} tokens")
+                
+                return {
+                    "content": ai_response,
+                    "tokens": tokens,
+                    "model": model
+                }
+            else:
+                error_text = response.text
+                print(f"❌ Mistral API error: {response.status_code} - {error_text}")
+                return {
+                    "content": f"AI service error (Status {response.status_code}): {error_text[:200]}",
+                    "tokens": 0,
+                    "model": "error"
+                }
+                
+    except Exception as e:
+        print(f"❌ Mistral API exception: {e}")
+        return {
+            "content": f"AI connection error: {str(e)[:200]}",
+            "tokens": 0,
+            "model": "error"
+        }
+
+# === ENDPOINTS ===
+
+@app.get("/")
+async def root():
+    api_key_status = "✅ CONFIGURED" if MISTRAL_API_KEY else "❌ NOT SET"
+    api_key_length = len(MISTRAL_API_KEY) if MISTRAL_API_KEY else 0
+    
+    return {
+        "message": "AI Chatbot API - Using Real Environment Variables",
+        "version": "2.2.0",
+        "status": "running",
+        "environment_info": {
+            "mistral_api_key_status": api_key_status,
+            "api_key_length": api_key_length,
+            "environment": ENVIRONMENT,
+            "database_url": "postgresql://postgres:postgres@postgres:5432/chatbot_db"
+        },
+        "features": {
+            "real_ai": f"{'✅' if MISTRAL_API_KEY else '❌'} Mistral AI from ENV",
+            "database": "✅ PostgreSQL storage",
+            "auth": "✅ JWT authentication"
+        },
+        "endpoints": {
+            "sample_data": "POST /dev/create-sample-data",
+            "register": "POST /auth/register", 
+            "login": "POST /auth/login",
+            "chat": "POST /chat/message",
+            "history": "GET /messages"
+        }
+    }
+
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "version": "2.2.0",
+        "mistral_api": "configured" if MISTRAL_API_KEY else "not_configured",
+        "mistral_key_length": len(MISTRAL_API_KEY) if MISTRAL_API_KEY else 0,
+        "database": "connected",
+        "environment": ENVIRONMENT
+    }
+
+# === DEVELOPMENT ===
+@app.post("/dev/create-sample-data")
+async def create_sample_data(db: Session = Depends(get_db)):
+    try:
+        users_data = [
+            {"email": "demo@example.com", "username": "demo", "password": "demo123", "full_name": "Demo User"},
+            {"email": "alice@example.com", "username": "alice", "password": "password123", "full_name": "Alice Johnson"},
+            {"email": "bob@example.com", "username": "bob", "password": "password123", "full_name": "Bob Smith"}
+        ]
+        
+        created_users = []
+        for user_data in users_data:
+            existing = db.query(User).filter(User.email == user_data["email"]).first()
+            if existing:
+                continue
+                
+            hashed_password = get_password_hash(user_data["password"])
+            db_user = User(
+                email=user_data["email"],
+                username=user_data["username"],
+                full_name=user_data["full_name"],
+                hashed_password=hashed_password,
+                is_active=True
+            )
+            
+            db.add(db_user)
+            created_users.append(user_data["email"])
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": f"Created {len(created_users)} users in database",
+            "users": created_users,
+            "test_credentials": {
+                "email": "demo@example.com",
+                "password": "demo123"
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        return {"success": False, "error": str(e)}
+
+# === AUTHENTICATION ===
+@app.post("/auth/register")
+async def register(user_data: UserCreate, db: Session = Depends(get_db)):
+    try:
+        existing = db.query(User).filter(
+            (User.email == user_data.email) | (User.username == user_data.username)
+        ).first()
+        
+        if existing:
+            if existing.email == user_data.email:
+                raise HTTPException(status_code=400, detail="Email already registered")
+            else:
+                raise HTTPException(status_code=400, detail="Username already taken")
+        
+        hashed_password = get_password_hash(user_data.password)
+        db_user = User(
+            email=user_data.email,
+            username=user_data.username,
+            full_name=user_data.full_name,
+            hashed_password=hashed_password,
+            is_active=True
+        )
+        
+        db.add(db_user)
+        db.commit()
+        db.refresh(db_user)
+        
+        return {
+            "success": True,
+            "message": "User registered successfully",
+            "user": {
+                "id": db_user.id,
+                "email": db_user.email,
+                "username": db_user.username,
+                "full_name": db_user.full_name
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        return {"success": False, "error": str(e)}
+
+@app.post("/auth/login", response_model=Token)
+async def login(login_data: UserLogin, db: Session = Depends(get_db)):
+    try:
+        user = db.query(User).filter(User.email == login_data.email).first()
+        
+        if not user or not verify_password(login_data.password, user.hashed_password):
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+        
+        access_token = create_access_token(data={"sub": user.email})
+        return Token(access_token=access_token)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
+
+@app.get("/auth/me")
+async def get_me(current_user: User = Depends(get_current_user)):
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "username": current_user.username,
+        "full_name": current_user.full_name,
+        "is_active": current_user.is_active,
+        "created_at": current_user.created_at.isoformat()
+    }
+
+# === CHAT with REAL AI from ENVIRONMENT VARIABLE ===
+@app.post("/chat/message")
+async def send_message(
+    chat_request: ChatRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    start_time = time.time()
+    
+    try:
+        # Store user message
+        user_message = ChatMessage(
+            user_id=current_user.id,
+            content=chat_request.message,
+            message_type="user"
+        )
+        db.add(user_message)
+        db.commit()
+        db.refresh(user_message)
+        
+        # Get REAL AI response using ENVIRONMENT VARIABLE
+        ai_result = await call_mistral_ai(
+            chat_request.message, 
+            chat_request.model, 
+            chat_request.temperature
+        )
+        
+        response_time = int((time.time() - start_time) * 1000)
+        
+        # Store AI message
+        ai_message = ChatMessage(
+            user_id=None,
+            content=ai_result["content"],
+            message_type="assistant",
+            model_name=ai_result["model"],
+            tokens_used=ai_result["tokens"],
+            response_time_ms=response_time
+        )
+        db.add(ai_message)
+        db.commit()
+        db.refresh(ai_message)
+        
+        return {
+            "id": ai_message.id,
+            "response": ai_result["content"],
+            "user_message": chat_request.message,
+            "model": ai_result["model"],
+            "tokens_used": ai_result["tokens"],
+            "response_time_ms": response_time,
+            "real_ai": bool(MISTRAL_API_KEY),
+            "api_key_used": f"{MISTRAL_API_KEY[:8]}..." if MISTRAL_API_KEY else "none",
+            "stored_in_db": True
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Chat failed: {str(e)}")
+
+@app.get("/messages")
+async def get_messages(
+    limit: int = 20,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        messages = db.query(ChatMessage).order_by(
+            ChatMessage.created_at.desc()
+        ).limit(limit).all()
+        
+        result = []
+        for msg in reversed(messages):
+            if msg.user_id:
+                user = db.query(User).filter(User.id == msg.user_id).first()
+                username = user.username if user else "Unknown"
+            else:
+                username = "AI Assistant"
+            
+            result.append({
+                "id": msg.id,
+                "content": msg.content,
+                "message_type": msg.message_type,
+                "username": username,
+                "model": msg.model_name,
+                "tokens": msg.tokens_used,
+                "created_at": msg.created_at.isoformat()
+            })
+        
+        return {"messages": result, "total": len(result)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get messages: {str(e)}")
+
