@@ -264,4 +264,4 @@ GitHub: [@BELLILMohamedNadir](https://github.com/BELLILMohamedNadir)
 
 ---
 
-<p align="center">Made with ❤️ by Mohamed Nadir BELLIL</p>
+<p align="center">Made by Mohamed Nadir BELLIL</p>
