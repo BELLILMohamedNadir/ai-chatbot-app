@@ -219,6 +219,7 @@ ai-chatbot-app/
 ```bash
 # Backend
 cd apps/backend
+source .venv/bin/activate
 pytest tests/ -v --cov
 
 # Frontend
